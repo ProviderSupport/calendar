@@ -247,9 +247,9 @@ function makeTimeSelect(id,val){
 function onSelectChange(id){
   const parts=id.split('-');const idx=+parts[1];
   const badge=document.querySelector(`#shift-block-${idx} .shift-saved-time`);
-  if(badge&&!badge.classList.contains('new'))badge.classList.add('unsaved');
+  if(badge)badge.classList.add('unsaved');
   const btn=document.getElementById(`update-btn-${idx}`);
-  if(btn&&!badge?.classList.contains('new')){btn.textContent='Update time';btn.className='update-shift-btn';}
+  if(btn){btn.textContent='Update time';btn.className='update-shift-btn';}
 }
 
 const mp=document.getElementById('month-pick');
@@ -315,7 +315,7 @@ function updateSingleShift(idx){if(!selectedDate)return;const sEl=document.getEl
   const btn=document.getElementById(`update-btn-${idx}`);if(btn)btn.textContent='Update time';
   renderCal();showToast(`Shift ${idx+1} saved ✓`);}
 function deleteShiftInPanel(idx){if(!selectedDate||!dayData[selectedDate])return;commitAllSelects();dayData[selectedDate].shifts.splice(idx,1);if(!dayData[selectedDate].shifts.length)delete dayData[selectedDate];dayData[selectedDate]?rebuildShiftListOnly():closePanel();renderCal();}
-function addShiftInPanel(){if(!selectedDate)return;commitAllSelects();if(!dayData[selectedDate])dayData[selectedDate]={type:'avail',shifts:[],adminAvail:false};dayData[selectedDate].type='avail';const ns={start:'08:00',end:'17:00'};dayData[selectedDate].shifts.push(ns);const idx=dayData[selectedDate].shifts.length-1;const list=document.getElementById('shift-list');if(list){const div=document.createElement('div');div.innerHTML=shiftBlockHtml(ns,idx,true);list.appendChild(div.firstElementChild);}renderCal();}
+function addShiftInPanel(){if(!selectedDate)return;commitAllSelects();if(!dayData[selectedDate])dayData[selectedDate]={type:'avail',shifts:[],adminAvail:false};dayData[selectedDate].type='avail';dayData[selectedDate].shifts.push({start:'08:00',end:'17:00'});const list=document.getElementById('shift-list');if(list){list.innerHTML=dayData[selectedDate].shifts.map((s,i)=>shiftBlockHtml(s,i,i===dayData[selectedDate].shifts.length-1)).join('');}renderCal();}
 function commitAllSelects(){if(!selectedDate||!dayData[selectedDate])return;dayData[selectedDate].shifts.forEach((_,i)=>{const sEl=document.getElementById(`sh-${i}-s`);const eEl=document.getElementById(`sh-${i}-e`);if(sEl)dayData[selectedDate].shifts[i].start=sEl.value;if(eEl)dayData[selectedDate].shifts[i].end=eEl.value;});}
 function getAllCurrentShifts(){if(!selectedDate||!dayData[selectedDate])return[];commitAllSelects();return dayData[selectedDate].shifts.map(s=>({...s}));}
 function buildMiniCal(sourceKey,prefix){

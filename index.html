@@ -193,7 +193,7 @@ function downloadPDF(){
     const pw=pdf.internal.pageSize.getWidth();const iw=pw-40;const ih=(canvas.height/canvas.width)*iw;
     pdf.addImage(canvas.toDataURL('image/png'),'PNG',20,20,iw,ih);
     const name=(document.getElementById('prov-name').value||'availability').replace(/\s+/g,'_');
-    const mo=new Date(currentYear,currentMonth,1).toLocaleString('default',{month:'long',year:'numeric'}).replace(/\s+/g,'_');
+    const mo=getMonthLabel().replace(/[\/\s]+/g,'_');
     pdf.save(`${name}_${mo}.pdf`);
     btn.classList.remove('loading');btn.innerHTML='<i class="ti ti-file-type-pdf" style="font-size:14px"></i> Download PDF';
     showToast('PDF downloaded ✓');
@@ -205,7 +205,7 @@ function downloadImage(){
   html2canvas(document.getElementById('main-container'),{scale:2,backgroundColor:'#ffffff',useCORS:true}).then(canvas=>{
     const a=document.createElement('a');
     const name=(document.getElementById('prov-name').value||'availability').replace(/\s+/g,'_');
-    const mo=new Date(currentYear,currentMonth,1).toLocaleString('default',{month:'long',year:'numeric'}).replace(/\s+/g,'_');
+    const mo=getMonthLabel().replace(/[\/\s]+/g,'_');
     a.download=`${name}_${mo}.png`;a.href=canvas.toDataURL('image/png');a.click();
     btn.classList.remove('loading');btn.innerHTML='<i class="ti ti-photo" style="font-size:14px"></i> Download image';
     showToast('Image downloaded ✓');
@@ -408,14 +408,49 @@ function renderSummary(){
   if(ooo.length){html+=`<div class="section-label" style="margin-top:12px;margin-bottom:6px">Time off</div>`;ooo.forEach(k=>{const d=dayData[k];const dt=new Date(k+'T00:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});const hol=hols[k]?`<span style="font-size:10px;background:#ede9fe;color:#7c3aed;border-radius:4px;padding:1px 5px;border:0.5px solid #c4b5fd">${hols[k]}</span>`:'';const ab=d.adminAvail?`<span style="font-size:10px;background:#fef3c7;color:#92400e;border-radius:4px;padding:1px 5px">admin ok</span>`:'';html+=`<div style="font-size:13px;padding:5px 0;border-bottom:0.5px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;color:#111827">${dt}${hol}${ab}</span></div>`;});}
   html+=`<div class="action-row">
     <div class="action-label">Share your availability</div>
-    <button class="btn-primary" onclick="copyShareableLink()"><i class="ti ti-link" style="font-size:14px"></i> Copy shareable link</button>
-    <button class="btn-secondary" id="pdf-btn" onclick="downloadPDF()"><i class="ti ti-file-type-pdf" style="font-size:14px"></i> Download PDF</button>
-    <button class="btn-secondary" id="img-btn" onclick="downloadImage()"><i class="ti ti-photo" style="font-size:14px"></i> Download image</button>
-    <button class="btn-secondary" onclick="copyEmailText()"><i class="ti ti-copy" style="font-size:14px"></i> Copy email text</button>
+    <div style="width:100%;background:#f0fdf4;border:0.5px solid #bbf7d0;border-radius:6px;padding:10px 14px;font-size:13px;color:#166534;display:flex;align-items:flex-start;gap:8px;margin-bottom:4px">
+      <i class="ti ti-info-circle" style="font-size:16px;flex-shrink:0;margin-top:1px"></i>
+      <span><strong>Three steps to submit:</strong><br>1) First click <em>Download PDF</em> to save your calendar.<br>2) Then, click <em>Send email to Hone</em> — your email app will open pre-filled.<br>3) Please attach the PDF before sending.</span>
+    </div>
+    <button class="btn-primary" id="pdf-btn" onclick="downloadPDF()" style="background:#166534"><i class="ti ti-file-type-pdf" style="font-size:14px"></i> Download PDF</button>
+    <button class="btn-primary" onclick="sendEmail()" style="background:#166534"><i class="ti ti-send" style="font-size:14px"></i> Send email to Hone</button>
   </div></div>`;
   sec.innerHTML=html;
 }
 
+
+
+function getMonthLabel(){
+  const keys=Object.keys(dayData).filter(k=>dayData[k].type!=='none').sort();
+  if(!keys.length){return new Date(currentYear,currentMonth,1).toLocaleString('default',{month:'long',year:'numeric'});}
+  // collect unique year-month combos
+  const seen=new Map();
+  keys.forEach(k=>{const[y,m]=k.split('-');const ym=`${y}-${m}`;if(!seen.has(ym)){seen.set(ym,new Date(+y,+m-1,1));}});
+  const dates=[...seen.values()].sort((a,b)=>a-b);
+  if(dates.length===1){return dates[0].toLocaleString('default',{month:'long',year:'numeric'});}
+  // check if all same year
+  const years=[...new Set(dates.map(d=>d.getFullYear()))];
+  if(years.length===1){
+    const months=dates.map(d=>d.toLocaleString('default',{month:'long'})).join('/');
+    return `${months} ${years[0]}`;
+  }
+  return dates.map(d=>d.toLocaleString('default',{month:'long',year:'numeric'})).join(' / ');
+}
+
+function sendEmail(){
+  const name=document.getElementById('prov-name').value||'Provider';
+  const ml=getMonthLabel();
+  const hols=getFederalHolidays(currentYear);
+  const keys=Object.keys(dayData).filter(k=>dayData[k].type!=='none').sort();
+  let body=`Availability Submission\nProvider: ${name}\nMonth(s): ${ml}\n\n`;
+  const avail=keys.filter(k=>dayData[k].type==='avail');
+  const ooo=keys.filter(k=>dayData[k].type==='ooo');
+  if(avail.length){body+='AVAILABLE DAYS\n';avail.forEach(k=>{const[ky,km,kd]=k.split('-');const hols2=getFederalHolidays(+ky);const d=dayData[k];const dt=new Date(+ky,+km-1,+kd).toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});const shifts=d.shifts.map((s,i)=>`${ORDINALS[i]||i+1+'th'} shift: ${fmtFull(s.start)}–${fmtFull(s.end)}`).join(', ')||'TBD';body+=`  ${dt}${hols2[k]?' ['+hols2[k]+']':''}: ${shifts}\n`;});}
+  if(ooo.length){body+='\nTIME OFF\n';ooo.forEach(k=>{const[ky,km,kd]=k.split('-');const hols2=getFederalHolidays(+ky);const d=dayData[k];const dt=new Date(+ky,+km-1,+kd).toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});body+=`  ${dt}${hols2[k]?' ['+hols2[k]+']':''}: OOO — ${d.adminAvail?'available for admin tasks (reviewing labs, approving Rxs, responding to emails)':'not available for admin tasks'}\n`;});}
+  const subject=encodeURIComponent(`Availability Submission — ${ml}`);
+  const encodedBody=encodeURIComponent(body);
+  window.location.href=`mailto:providers@honehealth.zendesk.com?subject=${subject}&body=${encodedBody}`;
+}
 
 document.getElementById('prov-name').addEventListener('input',renderSummary);
 loadFromURL();

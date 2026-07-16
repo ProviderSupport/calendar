@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Provider Availability Calendar</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 :root{--font-sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;--radius:6px;--text-primary:#111827;--text-secondary:#6b7280;--text-muted:#9ca3af;--text-accent:#2563eb;--text-success:#166534;--text-danger:#991b1b;--text-warning:#92400e;--border:#e5e7eb;--border-strong:#d1d5db;--border-accent:#bfdbfe;--border-success:#bbf7d0;--border-danger:#fecaca;--border-warning:#fde68a;--surface-1:#f9fafb;--surface-2:#ffffff;--bg-accent:#eff6ff;--bg-success:#dcfce7;--bg-danger:#fee2e2;--bg-warning:#fef3c7;--fill-accent:#2563eb;--on-accent:#ffffff;--fill-accent-hover:#1d4ed8}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -36,7 +38,6 @@ input[type=text]:focus,input[type=month]:focus{border-color:var(--fill-accent)}
 .tag-rm{background:none;border:none;cursor:pointer;color:inherit;opacity:.6;font-size:10px;line-height:1;padding:0;flex-shrink:0;display:none}
 .tag-rm:hover{opacity:1}
 .day:hover .tag-rm{display:inline}
-.note-dot{position:absolute;bottom:3px;left:5px;font-size:11px;color:var(--text-accent);line-height:1;pointer-events:none}
 .rm-day-btn{position:absolute;top:3px;right:3px;background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:13px;line-height:1;padding:1px 3px;border-radius:3px;display:none;font-family:var(--font-sans)}
 .rm-day-btn:hover{color:var(--text-danger);background:var(--bg-danger)}
 .day:hover .rm-day-btn{display:block}
@@ -73,17 +74,20 @@ input[type=text]:focus,input[type=month]:focus{border-color:var(--fill-accent)}
 .admin-radio-row{display:flex;gap:12px}
 .admin-radio-row label{display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer;color:var(--text-primary)}
 .section-label{font-size:11px;color:var(--text-muted);margin-bottom:5px;font-weight:500;text-transform:uppercase;letter-spacing:.04em}
-.notes-wrap{margin-top:12px}
-.notes-live-dot{width:7px;height:7px;border-radius:50%;background:var(--fill-accent);display:none;flex-shrink:0}
-.notes-field{width:100%;font-size:13px;margin-top:4px;min-height:48px;resize:vertical;font-family:var(--font-sans);padding:6px 8px;border:0.5px solid var(--border-strong);border-radius:var(--radius)}
 .legend{display:flex;gap:12px;margin-top:12px;flex-wrap:wrap}
 .legend-item{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text-secondary)}
 .leg-dot{width:10px;height:10px;border-radius:50%}
 .summary-card{background:var(--surface-1);border:0.5px solid var(--border);border-radius:12px;padding:1rem 1.25rem;margin-top:1rem}
 .summary-card h3{font-size:14px;font-weight:500;margin-bottom:10px}
-.copy-btn{background:var(--fill-accent);color:#fff;border:none;border-radius:var(--radius);padding:8px 18px;font-size:13px;font-weight:500;cursor:pointer;margin-top:12px;font-family:var(--font-sans)}
-.copy-btn:hover{background:var(--fill-accent-hover)}
-.copied{font-size:12px;color:var(--text-success);margin-left:8px;display:none}
+.action-row{display:flex;gap:8px;align-items:center;margin-top:14px;flex-wrap:wrap}
+.action-label{font-size:11px;color:var(--text-muted);width:100%;margin-bottom:2px;text-transform:uppercase;letter-spacing:.04em;font-weight:500}
+.btn-primary{background:var(--fill-accent);color:#fff;border:none;border-radius:var(--radius);padding:8px 16px;font-size:13px;font-weight:500;cursor:pointer;font-family:var(--font-sans);display:flex;align-items:center;gap:6px}
+.btn-primary:hover{background:var(--fill-accent-hover)}
+.btn-secondary{background:#fff;color:var(--text-primary);border:0.5px solid var(--border-strong);border-radius:var(--radius);padding:8px 16px;font-size:13px;font-weight:500;cursor:pointer;font-family:var(--font-sans);display:flex;align-items:center;gap:6px}
+.btn-secondary:hover{background:var(--surface-1)}
+.btn-secondary.loading{opacity:.6;pointer-events:none}
+.share-banner{background:var(--bg-accent);border:0.5px solid var(--border-accent);border-radius:var(--radius);padding:10px 14px;margin-bottom:1rem;font-size:13px;color:var(--text-accent);display:none;align-items:center;gap:8px}
+.share-banner.show{display:flex}
 .recur-box{background:var(--bg-accent);border:0.5px solid var(--border-accent);border-radius:var(--radius);padding:10px 12px;margin-top:10px}
 .recur-box .rb-title{font-size:13px;font-weight:500;color:var(--text-accent);margin-bottom:8px}
 .recur-tabs{display:flex;gap:6px;margin-bottom:10px}
@@ -109,11 +113,15 @@ button{font-family:var(--font-sans)}
 </style>
 </head>
 <body>
-<div class="container">
+<div class="container" id="main-container">
   <h1>Provider Availability Calendar</h1>
-  <p class="subtitle">Fill out your availability and time off, then copy as email to send to your scheduling coordinator.</p>
+  <p class="subtitle">Fill out your availability and time off, then share with your scheduling coordinator.</p>
+  <div class="share-banner" id="share-banner">
+    <i class="ti ti-info-circle" style="font-size:16px;flex-shrink:0"></i>
+    <span id="share-banner-text"></span>
+  </div>
   <div class="top-row">
-    <div><label>Provider name</label><br><input type="text" id="prov-name" placeholder="Dr. Jane Smith" style="margin-top:4px;width:200px"></div>
+    <div><label>Provider name</label><br><input type="text" id="prov-name" style="margin-top:4px;width:200px"></div>
     <div><label>Month</label><br><input type="month" id="month-pick" style="margin-top:4px;width:160px"></div>
   </div>
   <div class="nav-row">
@@ -130,7 +138,6 @@ button{font-family:var(--font-sans)}
     <div class="legend-item"><div class="leg-dot" style="background:#fee2e2;border:1px solid #fecaca"></div>OOO</div>
     <div class="legend-item"><div class="leg-dot" style="background:#fef3c7;border:1px solid #fde68a"></div>OOO + admin</div>
     <div class="legend-item"><div class="leg-dot" style="background:#ede9fe;border:1px solid #c4b5fd"></div>Federal holiday</div>
-    <div class="legend-item"><i class="ti ti-notes" style="font-size:12px;color:#2563eb"></i> Has notes</div>
     <div class="legend-item" style="color:#9ca3af">Hover → ✕ removes</div>
   </div>
   <div id="day-panel" style="display:none"></div>
@@ -161,12 +168,75 @@ function getFederalHolidays(y){
   add(10,11,"Veterans Day");h[`${y}-11-${p2(nthWD(y,10,4,4))}`]="Thanksgiving";add(11,25,"Christmas Day");
   return h;
 }
-function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2400);}
 function dateKey(y,m,d){return `${y}-${p2(m+1)}-${p2(d)}`;}
 function getDOW(key){return new Date(key+'T00:00:00').getDay();}
 function getDaysOfDOW(di){const dm=new Date(currentYear,currentMonth+1,0).getDate(),keys=[];for(let i=1;i<=dm;i++){const k=dateKey(currentYear,currentMonth,i);if(getDOW(k)===di)keys.push(k);}return keys;}
 function fmtFull(t){if(!t)return'?';const[h,m]=t.split(':');const hr=+h;return((hr%12)||12)+':'+m+' '+(hr>=12?'PM':'AM');}
 function fmtTag(s,e){function f(t){if(!t)return'?';const[h,m]=t.split(':');const hr=+h;return((hr%12)||12)+(m==='00'?'':':'+m)+(hr>=12?'pm':'am');}return f(s)+'–'+f(e);}
+
+// Share options
+function encodeState(){
+  const state={name:document.getElementById('prov-name').value||'',year:currentYear,month:currentMonth,days:dayData};
+  return btoa(encodeURIComponent(JSON.stringify(state)));
+}
+function decodeState(enc){try{return JSON.parse(decodeURIComponent(atob(enc)));}catch(e){return null;}}
+function copyShareableLink(){
+  const url=`${location.origin}${location.pathname}?d=${encodeState()}`;
+  navigator.clipboard.writeText(url).then(()=>showToast('Shareable link copied — paste it into your email ✓'));
+}
+function downloadPDF(){
+  const btn=document.getElementById('pdf-btn');btn.classList.add('loading');btn.innerHTML='<i class="ti ti-loader" style="font-size:14px"></i> Generating…';
+  document.getElementById('day-panel').style.display='none';
+  html2canvas(document.getElementById('main-container'),{scale:2,backgroundColor:'#ffffff',useCORS:true}).then(canvas=>{
+    const{jsPDF}=window.jspdf;const pdf=new jsPDF({orientation:'portrait',unit:'pt',format:'a4'});
+    const pw=pdf.internal.pageSize.getWidth();const iw=pw-40;const ih=(canvas.height/canvas.width)*iw;
+    pdf.addImage(canvas.toDataURL('image/png'),'PNG',20,20,iw,ih);
+    const name=(document.getElementById('prov-name').value||'availability').replace(/\s+/g,'_');
+    const mo=new Date(currentYear,currentMonth,1).toLocaleString('default',{month:'long',year:'numeric'}).replace(/\s+/g,'_');
+    pdf.save(`${name}_${mo}.pdf`);
+    btn.classList.remove('loading');btn.innerHTML='<i class="ti ti-file-type-pdf" style="font-size:14px"></i> Download PDF';
+    showToast('PDF downloaded ✓');
+  });
+}
+function downloadImage(){
+  const btn=document.getElementById('img-btn');btn.classList.add('loading');btn.innerHTML='<i class="ti ti-loader" style="font-size:14px"></i> Generating…';
+  document.getElementById('day-panel').style.display='none';
+  html2canvas(document.getElementById('main-container'),{scale:2,backgroundColor:'#ffffff',useCORS:true}).then(canvas=>{
+    const a=document.createElement('a');
+    const name=(document.getElementById('prov-name').value||'availability').replace(/\s+/g,'_');
+    const mo=new Date(currentYear,currentMonth,1).toLocaleString('default',{month:'long',year:'numeric'}).replace(/\s+/g,'_');
+    a.download=`${name}_${mo}.png`;a.href=canvas.toDataURL('image/png');a.click();
+    btn.classList.remove('loading');btn.innerHTML='<i class="ti ti-photo" style="font-size:14px"></i> Download image';
+    showToast('Image downloaded ✓');
+  });
+}
+function copyEmailText(){
+  const name=document.getElementById('prov-name').value||'—';
+  const ml=new Date(currentYear,currentMonth,1).toLocaleString('default',{month:'long',year:'numeric'});
+  const hols=getFederalHolidays(currentYear);
+  const keys=Object.keys(dayData).filter(k=>dayData[k].type!=='none').sort();
+  let body=`AVAILABILITY SUBMISSION\nProvider: ${name}\nMonth: ${ml}\n\n`;
+  const avail=keys.filter(k=>dayData[k].type==='avail');
+  const ooo=keys.filter(k=>dayData[k].type==='ooo');
+  if(avail.length){body+='AVAILABLE DAYS\n';avail.forEach(k=>{const d=dayData[k];const dt=new Date(k+'T00:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});const shifts=d.shifts.map((s,i)=>`${ORDINALS[i]||i+1+'th'} shift: ${fmtFull(s.start)}–${fmtFull(s.end)}`).join(', ')||'TBD';body+=`  ${dt}${hols[k]?' ['+hols[k]+']':''}: ${shifts}\n`;});}
+  if(ooo.length){body+='\nTIME OFF\n';ooo.forEach(k=>{const d=dayData[k];const dt=new Date(k+'T00:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});body+=`  ${dt}${hols[k]?' ['+hols[k]+']':''}: OOO — ${d.adminAvail?'available for admin tasks (reviewing labs, approving Rxs, responding to emails)':'not available for admin tasks'}\n`;});}
+  navigator.clipboard.writeText(body).then(()=>showToast('Email text copied ✓'));
+}
+function loadFromURL(){
+  const d=new URLSearchParams(location.search).get('d');if(!d)return;
+  const state=decodeState(d);if(!state)return;
+  
+  if(state.year!=null)currentYear=state.year;
+  if(state.month!=null)currentMonth=state.month;
+  if(state.days)Object.assign(dayData,state.days);
+  if(state.name)document.getElementById('prov-name').value=state.name;
+  document.getElementById('month-pick').value=`${currentYear}-${p2(currentMonth+1)}`;
+  const banner=document.getElementById('share-banner');
+  document.getElementById('share-banner-text').textContent=`Viewing ${state.name||'provider'}'s submitted availability. You can edit and re-share.`;
+  banner.classList.add('show');
+}
+
 function makeTimeSelect(id,val){
   let s=`<select class="time-sel" id="${id}" onchange="onSelectChange('${id}')">`;
   const[ch,cm]=(val||'08:00').split(':');
@@ -174,25 +244,12 @@ function makeTimeSelect(id,val){
   return s+'</select>';
 }
 function onSelectChange(id){const parts=id.split('-');const idx=+parts[1];const badge=document.querySelector(`#shift-block-${idx} .shift-saved-time`);if(badge&&!badge.classList.contains('new'))badge.classList.add('unsaved');}
-function onNotesInput(el){
-  const dot=document.getElementById('notes-live-dot');
-  if(dot)dot.style.display=el.value.trim()?'block':'none';
-  if(selectedDate&&dayData[selectedDate]){dayData[selectedDate].notes=el.value;updateNoteDotOnTile(selectedDate,el.value);}
-}
-function updateNoteDotOnTile(key,noteVal){
-  const grid=document.getElementById('cal-grid');
-  const firstDay=new Date(currentYear,currentMonth,1).getDay();
-  const dayNum=parseInt(key.split('-')[2]);
-  const tile=grid.querySelectorAll('.day')[firstDay+dayNum-1];
-  if(!tile)return;
-  let dot=tile.querySelector('.note-dot');
-  if(noteVal&&noteVal.trim()){if(!dot){dot=document.createElement('div');dot.className='note-dot';dot.innerHTML='<i class="ti ti-notes"></i>';tile.appendChild(dot);}}
-  else{if(dot)dot.remove();}
-}
+
 const mp=document.getElementById('month-pick');
 mp.value=`${currentYear}-${p2(currentMonth+1)}`;
 mp.addEventListener('change',e=>{const[y,m]=e.target.value.split('-');currentYear=+y;currentMonth=+m-1;closePanel();renderCal();});
 function changeMonth(d){currentMonth+=d;if(currentMonth>11){currentMonth=0;currentYear++;}if(currentMonth<0){currentMonth=11;currentYear--;}mp.value=`${currentYear}-${p2(currentMonth+1)}`;closePanel();renderCal();}
+
 function removeShiftFromDay(key,idx,e){
   e.stopPropagation();if(!dayData[key])return;
   dayData[key].shifts.splice(idx,1);
@@ -218,7 +275,6 @@ function renderCal(){
     if(data){
       if(data.type==='avail'){data.shifts.forEach((s,si)=>{inner+=`<div class="tag avail"><span style="overflow:hidden;text-overflow:ellipsis">${fmtTag(s.start,s.end)}</span><button class="tag-rm" onclick="removeShiftFromDay('${key}',${si},event)">✕</button></div>`;});}
       else if(data.type==='ooo'){inner+=data.adminAvail?`<div class="tag ooo-admin">OOO + admin</div>`:`<div class="tag ooo">OOO</div>`;}
-      if(data.notes&&data.notes.trim())inner+=`<div class="note-dot"><i class="ti ti-notes"></i></div>`;
       inner+=`<button class="rm-day-btn" onclick="removeDay(event,'${key}')">✕</button>`;
     }
     d.innerHTML=inner;d.addEventListener('click',()=>openPanel(i,key));grid.appendChild(d);
@@ -248,12 +304,11 @@ function shiftBlockHtml(s,idx,isNew){
   </div>`;
 }
 function rebuildShiftListOnly(){if(!selectedDate||!dayData[selectedDate])return;const list=document.getElementById('shift-list');if(list)list.innerHTML=dayData[selectedDate].shifts.map((s,i)=>shiftBlockHtml(s,i,false)).join('');}
-function updateSingleShift(idx){if(!selectedDate)return;const sEl=document.getElementById(`sh-${idx}-s`);const eEl=document.getElementById(`sh-${idx}-e`);if(!sEl||!eEl)return;if(!dayData[selectedDate])dayData[selectedDate]={type:'avail',shifts:[],adminAvail:false,notes:''};while(dayData[selectedDate].shifts.length<=idx)dayData[selectedDate].shifts.push({start:'08:00',end:'17:00'});dayData[selectedDate].shifts[idx]={start:sEl.value,end:eEl.value};const badge=document.querySelector(`#shift-block-${idx} .shift-saved-time`);if(badge){badge.textContent=fmtTag(sEl.value,eEl.value);badge.classList.remove('unsaved','new');}renderCal();showToast(`Shift ${idx+1} updated ✓`);}
+function updateSingleShift(idx){if(!selectedDate)return;const sEl=document.getElementById(`sh-${idx}-s`);const eEl=document.getElementById(`sh-${idx}-e`);if(!sEl||!eEl)return;if(!dayData[selectedDate])dayData[selectedDate]={type:'avail',shifts:[],adminAvail:false};while(dayData[selectedDate].shifts.length<=idx)dayData[selectedDate].shifts.push({start:'08:00',end:'17:00'});dayData[selectedDate].shifts[idx]={start:sEl.value,end:eEl.value};const badge=document.querySelector(`#shift-block-${idx} .shift-saved-time`);if(badge){badge.textContent=fmtTag(sEl.value,eEl.value);badge.classList.remove('unsaved','new');}renderCal();showToast(`Shift ${idx+1} updated ✓`);}
 function deleteShiftInPanel(idx){if(!selectedDate||!dayData[selectedDate])return;commitAllSelects();dayData[selectedDate].shifts.splice(idx,1);if(!dayData[selectedDate].shifts.length)delete dayData[selectedDate];dayData[selectedDate]?rebuildShiftListOnly():closePanel();renderCal();}
-function addShiftInPanel(){if(!selectedDate)return;commitAllSelects();if(!dayData[selectedDate])dayData[selectedDate]={type:'avail',shifts:[],adminAvail:false,notes:''};dayData[selectedDate].type='avail';const newShift={start:'08:00',end:'17:00'};dayData[selectedDate].shifts.push(newShift);const idx=dayData[selectedDate].shifts.length-1;const list=document.getElementById('shift-list');if(list){const div=document.createElement('div');div.innerHTML=shiftBlockHtml(newShift,idx,true);list.appendChild(div.firstElementChild);}renderCal();}
+function addShiftInPanel(){if(!selectedDate)return;commitAllSelects();if(!dayData[selectedDate])dayData[selectedDate]={type:'avail',shifts:[],adminAvail:false};dayData[selectedDate].type='avail';const ns={start:'08:00',end:'17:00'};dayData[selectedDate].shifts.push(ns);const idx=dayData[selectedDate].shifts.length-1;const list=document.getElementById('shift-list');if(list){const div=document.createElement('div');div.innerHTML=shiftBlockHtml(ns,idx,true);list.appendChild(div.firstElementChild);}renderCal();}
 function commitAllSelects(){if(!selectedDate||!dayData[selectedDate])return;dayData[selectedDate].shifts.forEach((_,i)=>{const sEl=document.getElementById(`sh-${i}-s`);const eEl=document.getElementById(`sh-${i}-e`);if(sEl)dayData[selectedDate].shifts[i].start=sEl.value;if(eEl)dayData[selectedDate].shifts[i].end=eEl.value;});}
 function getAllCurrentShifts(){if(!selectedDate||!dayData[selectedDate])return[];commitAllSelects();return dayData[selectedDate].shifts.map(s=>({...s}));}
-function getCurrentNotes(){return document.getElementById('day-notes')?.value||'';}
 function buildMiniCal(sourceKey,prefix){
   const dim=new Date(currentYear,currentMonth+1,0).getDate();const first=new Date(currentYear,currentMonth,1).getDay();const prev=new Date(currentYear,currentMonth,0).getDate();
   const selSet=prefix==='ooo'?oooSelectedSpecificDays:selectedSpecificDays;
@@ -285,17 +340,18 @@ function buildRecurBox(prefix,sourceKey,dowSet){
 function availToggleDOW(di){if(selectedDOWs.has(di))selectedDOWs.delete(di);else selectedDOWs.add(di);document.querySelectorAll('#avail-dow-content .dow-chip').forEach(c=>c.classList.toggle('selected',selectedDOWs.has(+c.dataset.dow)));}
 function availSwitchTab(tab){recurTab=tab;document.getElementById('avail-tab-dow').classList.toggle('active',tab==='dow');document.getElementById('avail-tab-specific').classList.toggle('active',tab==='specific');document.getElementById('avail-dow-content').style.display=tab==='dow'?'block':'none';document.getElementById('avail-specific-content').style.display=tab==='specific'?'block':'none';}
 function availToggleSpecific(key){if(selectedSpecificDays.has(key))selectedSpecificDays.delete(key);else selectedSpecificDays.add(key);const mc=document.getElementById('avail-mini-cal-wrap');if(mc)mc.innerHTML=buildMiniCal(selectedDate,'avail');}
-function availApplyDOW(){if(!selectedDate||!selectedDOWs.size)return;const shifts=getAllCurrentShifts();const notes=getCurrentNotes();const names=[];selectedDOWs.forEach(di=>{getDaysOfDOW(di).forEach(k=>{dayData[k]={type:'avail',shifts:shifts.map(s=>({...s})),adminAvail:false,notes:k===selectedDate?notes:''};});names.push(DOWS[di]+'s');});closePanel();renderCal();showToast(`Applied to all ${names.join(', ')} ✓`);}
-function availApplySpecific(){if(!selectedDate||!selectedSpecificDays.size)return;const shifts=getAllCurrentShifts();const notes=getCurrentNotes();dayData[selectedDate]={type:'avail',shifts:shifts.map(s=>({...s})),adminAvail:false,notes};selectedSpecificDays.forEach(k=>{dayData[k]={type:'avail',shifts:shifts.map(s=>({...s})),adminAvail:false,notes:''};});const count=selectedSpecificDays.size;closePanel();renderCal();showToast(`Applied to ${count} day${count>1?'s':''} ✓`);}
+function availApplyDOW(){if(!selectedDate||!selectedDOWs.size)return;const shifts=getAllCurrentShifts();const names=[];selectedDOWs.forEach(di=>{getDaysOfDOW(di).forEach(k=>{dayData[k]={type:'avail',shifts:shifts.map(s=>({...s})),adminAvail:false};});names.push(DOWS[di]+'s');});closePanel();renderCal();showToast(`Applied to all ${names.join(', ')} ✓`);}
+function availApplySpecific(){if(!selectedDate||!selectedSpecificDays.size)return;const shifts=getAllCurrentShifts();dayData[selectedDate]={type:'avail',shifts:shifts.map(s=>({...s})),adminAvail:false};selectedSpecificDays.forEach(k=>{dayData[k]={type:'avail',shifts:shifts.map(s=>({...s})),adminAvail:false};});const count=selectedSpecificDays.size;closePanel();renderCal();showToast(`Applied to ${count} day${count>1?'s':''} ✓`);}
 function oooToggleDOW(di){if(oooSelectedDOWs.has(di))oooSelectedDOWs.delete(di);else oooSelectedDOWs.add(di);document.querySelectorAll('#ooo-dow-content .dow-chip').forEach(c=>c.classList.toggle('selected',oooSelectedDOWs.has(+c.dataset.dow)));}
 function oooSwitchTab(tab){oooRecurTab=tab;document.getElementById('ooo-tab-dow').classList.toggle('active',tab==='dow');document.getElementById('ooo-tab-specific').classList.toggle('active',tab==='specific');document.getElementById('ooo-dow-content').style.display=tab==='dow'?'block':'none';document.getElementById('ooo-specific-content').style.display=tab==='specific'?'block':'none';}
 function oooToggleSpecific(key){if(oooSelectedSpecificDays.has(key))oooSelectedSpecificDays.delete(key);else oooSelectedSpecificDays.add(key);const mc=document.getElementById('ooo-mini-cal-wrap');if(mc)mc.innerHTML=buildMiniCal(selectedDate,'ooo');}
-function oooApplyDOW(){if(!selectedDate||!oooSelectedDOWs.size)return;const adminEl=document.querySelector('input[name="admin"]:checked');const adminAvail=adminEl?.value==='yes';const notes=getCurrentNotes();const names=[];oooSelectedDOWs.forEach(di=>{getDaysOfDOW(di).forEach(k=>{dayData[k]={type:'ooo',shifts:[],adminAvail,notes:k===selectedDate?notes:''};});names.push(DOWS[di]+'s');});closePanel();renderCal();showToast(`OOO applied to all ${names.join(', ')} ✓`);}
-function oooApplySpecific(){if(!selectedDate||!oooSelectedSpecificDays.size)return;const adminEl=document.querySelector('input[name="admin"]:checked');const adminAvail=adminEl?.value==='yes';const notes=getCurrentNotes();dayData[selectedDate]={type:'ooo',shifts:[],adminAvail,notes};oooSelectedSpecificDays.forEach(k=>{dayData[k]={type:'ooo',shifts:[],adminAvail,notes:''};});const count=oooSelectedSpecificDays.size;closePanel();renderCal();showToast(`OOO applied to ${count} day${count>1?'s':''} ✓`);}
+function oooApplyDOW(){if(!selectedDate||!oooSelectedDOWs.size)return;const adminEl=document.querySelector('input[name="admin"]:checked');const adminAvail=adminEl?.value==='yes';const names=[];oooSelectedDOWs.forEach(di=>{getDaysOfDOW(di).forEach(k=>{dayData[k]={type:'ooo',shifts:[],adminAvail};});names.push(DOWS[di]+'s');});closePanel();renderCal();showToast(`OOO applied to all ${names.join(', ')} ✓`);}
+function oooApplySpecific(){if(!selectedDate||!oooSelectedSpecificDays.size)return;const adminEl=document.querySelector('input[name="admin"]:checked');const adminAvail=adminEl?.value==='yes';dayData[selectedDate]={type:'ooo',shifts:[],adminAvail};oooSelectedSpecificDays.forEach(k=>{dayData[k]={type:'ooo',shifts:[],adminAvail};});const count=oooSelectedSpecificDays.size;closePanel();renderCal();showToast(`OOO applied to ${count} day${count>1?'s':''} ✓`);}
+
 function openPanel(dayNum,key){
   selectedDate=key;
   const hols=getFederalHolidays(currentYear);const hol=hols[key];
-  const ex=dayData[key]?JSON.parse(JSON.stringify(dayData[key])):{type:'none',shifts:[{start:'08:00',end:'17:00'}],adminAvail:false,notes:''};
+  const ex=dayData[key]?JSON.parse(JSON.stringify(dayData[key])):{type:'none',shifts:[{start:'08:00',end:'17:00'}],adminAvail:false};
   if(!ex.shifts||!ex.shifts.length)ex.shifts=[{start:'08:00',end:'17:00'}];
   if(!dayData[key])dayData[key]=JSON.parse(JSON.stringify(ex));
   currentPanelType=ex.type;
@@ -304,7 +360,6 @@ function openPanel(dayNum,key){
   const dateLabel=new Date(currentYear,currentMonth,dayNum).toLocaleString('default',{weekday:'long',month:'long',day:'numeric'});
   const panel=document.getElementById('day-panel');panel.style.display='block';
   const shiftHtml=ex.shifts.map((s,i)=>shiftBlockHtml(s,i,false)).join('');
-  const hasNote=ex.notes&&ex.notes.trim();
   panel.innerHTML=`<div class="panel">
     <h3>Set availability</h3>
     <div class="panel-date">${dateLabel}</div>
@@ -332,22 +387,16 @@ function openPanel(dayNum,key){
       </div>
       ${buildRecurBox('ooo',key,oooSelectedDOWs)}
     </div>
-    <div class="notes-wrap">
-      <div class="section-label" style="display:flex;align-items:center;gap:6px">
-        Notes (optional)
-        <div class="notes-live-dot" id="notes-live-dot" style="display:${hasNote?'block':'none'}"></div>
-      </div>
-      <textarea class="notes-field" id="day-notes" placeholder="Anything to flag..." oninput="onNotesInput(this)">${ex.notes||''}</textarea>
-    </div>
     <div class="panel-footer">
       <button style="font-size:13px;padding:6px 16px;border-radius:6px;border:0.5px solid #d1d5db;background:#fff;cursor:pointer;font-family:inherit" onclick="saveDay()">Save & close</button>
       <button style="font-size:13px;padding:6px 12px;color:#6b7280;background:none;border:none;cursor:pointer;font-family:inherit" onclick="closePanel()">Cancel</button>
     </div>
   </div>`;
 }
-function setType(t){if(!selectedDate)return;commitAllSelects();currentPanelType=t;if(!dayData[selectedDate])dayData[selectedDate]={type:'none',shifts:[{start:'08:00',end:'17:00'}],adminAvail:false,notes:''};dayData[selectedDate].type=t;openPanel(parseInt(selectedDate.split('-')[2]),selectedDate);}
-function saveDay(){if(!selectedDate)return;commitAllSelects();const type=currentPanelType;const notes=getCurrentNotes();const adminEl=document.querySelector('input[name="admin"]:checked');if(type==='none'){delete dayData[selectedDate];}else{dayData[selectedDate]={type,shifts:type==='avail'?(dayData[selectedDate]?.shifts||[]):[],adminAvail:type==='ooo'?adminEl?.value==='yes':false,notes};}closePanel();renderCal();}
+function setType(t){if(!selectedDate)return;commitAllSelects();currentPanelType=t;if(!dayData[selectedDate])dayData[selectedDate]={type:'none',shifts:[{start:'08:00',end:'17:00'}],adminAvail:false};dayData[selectedDate].type=t;openPanel(parseInt(selectedDate.split('-')[2]),selectedDate);}
+function saveDay(){if(!selectedDate)return;commitAllSelects();const type=currentPanelType;const adminEl=document.querySelector('input[name="admin"]:checked');if(type==='none'){delete dayData[selectedDate];}else{dayData[selectedDate]={type,shifts:type==='avail'?(dayData[selectedDate]?.shifts||[]):[],adminAvail:type==='ooo'?adminEl?.value==='yes':false};}closePanel();renderCal();}
 function closePanel(){document.getElementById('day-panel').style.display='none';selectedDate=null;currentPanelType='none';}
+
 function renderSummary(){
   const name=document.getElementById('prov-name').value||'—';
   const keys=Object.keys(dayData).filter(k=>dayData[k].type!=='none').sort();
@@ -355,20 +404,21 @@ function renderSummary(){
   const hols=getFederalHolidays(currentYear);
   const avail=keys.filter(k=>dayData[k].type==='avail');const ooo=keys.filter(k=>dayData[k].type==='ooo');
   let html=`<div class="summary-card"><h3>Summary — ${name}</h3>`;
-  if(avail.length){html+=`<div class="section-label" style="margin-bottom:6px">Available days</div>`;avail.forEach(k=>{const d=dayData[k];const dt=new Date(k+'T00:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});const shifts=d.shifts.map(s=>`${fmtFull(s.start)}–${fmtFull(s.end)}`).join(' · ')||'TBD';const hol=hols[k]?`<span style="font-size:10px;background:#ede9fe;color:#7c3aed;border-radius:4px;padding:1px 5px;border:0.5px solid #c4b5fd">${hols[k]}</span>`:'';const noteIco=d.notes&&d.notes.trim()?`<i class="ti ti-notes" style="font-size:11px;color:#2563eb" title="${d.notes.replace(/"/g,"'")}"></i>`:'';html+=`<div style="font-size:13px;padding:5px 0;border-bottom:0.5px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;color:#111827">${dt} ${hol}${noteIco}</span><span style="color:#6b7280;font-size:12px">${shifts}</span></div>`;});}
-  if(ooo.length){html+=`<div class="section-label" style="margin-top:12px;margin-bottom:6px">Time off</div>`;ooo.forEach(k=>{const d=dayData[k];const dt=new Date(k+'T00:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});const hol=hols[k]?`<span style="font-size:10px;background:#ede9fe;color:#7c3aed;border-radius:4px;padding:1px 5px;border:0.5px solid #c4b5fd">${hols[k]}</span>`:'';const ab=d.adminAvail?`<span style="font-size:10px;background:#fef3c7;color:#92400e;border-radius:4px;padding:1px 5px">admin ok</span>`:'';const noteIco=d.notes&&d.notes.trim()?`<i class="ti ti-notes" style="font-size:11px;color:#2563eb" title="${d.notes.replace(/"/g,"'")}"></i>`:'';html+=`<div style="font-size:13px;padding:5px 0;border-bottom:0.5px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;color:#111827">${dt}${hol}${ab}${noteIco}</span><span style="color:#6b7280;font-size:12px">${d.notes?'· '+d.notes:''}</span></div>`;});}
-  html+=`<div style="display:flex;align-items:center;margin-top:12px"><button class="copy-btn" onclick="copyEmail()"><i class="ti ti-copy"></i> Copy as email</button><span class="copied" id="copied-msg"><i class="ti ti-check"></i> Copied</span></div></div>`;
+  if(avail.length){html+=`<div class="section-label" style="margin-bottom:6px">Available days</div>`;avail.forEach(k=>{const d=dayData[k];const dt=new Date(k+'T00:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});const shifts=d.shifts.map(s=>`${fmtFull(s.start)}–${fmtFull(s.end)}`).join(' · ')||'TBD';const hol=hols[k]?`<span style="font-size:10px;background:#ede9fe;color:#7c3aed;border-radius:4px;padding:1px 5px;border:0.5px solid #c4b5fd">${hols[k]}</span>`:'';html+=`<div style="font-size:13px;padding:5px 0;border-bottom:0.5px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;color:#111827">${dt} ${hol}</span><span style="color:#6b7280;font-size:12px">${shifts}</span></div>`;});}
+  if(ooo.length){html+=`<div class="section-label" style="margin-top:12px;margin-bottom:6px">Time off</div>`;ooo.forEach(k=>{const d=dayData[k];const dt=new Date(k+'T00:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});const hol=hols[k]?`<span style="font-size:10px;background:#ede9fe;color:#7c3aed;border-radius:4px;padding:1px 5px;border:0.5px solid #c4b5fd">${hols[k]}</span>`:'';const ab=d.adminAvail?`<span style="font-size:10px;background:#fef3c7;color:#92400e;border-radius:4px;padding:1px 5px">admin ok</span>`:'';html+=`<div style="font-size:13px;padding:5px 0;border-bottom:0.5px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;color:#111827">${dt}${hol}${ab}</span></div>`;});}
+  html+=`<div class="action-row">
+    <div class="action-label">Share your availability</div>
+    <button class="btn-primary" onclick="copyShareableLink()"><i class="ti ti-link" style="font-size:14px"></i> Copy shareable link</button>
+    <button class="btn-secondary" id="pdf-btn" onclick="downloadPDF()"><i class="ti ti-file-type-pdf" style="font-size:14px"></i> Download PDF</button>
+    <button class="btn-secondary" id="img-btn" onclick="downloadImage()"><i class="ti ti-photo" style="font-size:14px"></i> Download image</button>
+    <button class="btn-secondary" onclick="copyEmailText()"><i class="ti ti-copy" style="font-size:14px"></i> Copy email text</button>
+  </div></div>`;
   sec.innerHTML=html;
 }
-function copyEmail(){
-  const name=document.getElementById('prov-name').value||'—';const ml=new Date(currentYear,currentMonth,1).toLocaleString('default',{month:'long',year:'numeric'});const hols=getFederalHolidays(currentYear);
-  const keys=Object.keys(dayData).filter(k=>dayData[k].type!=='none').sort();let body=`AVAILABILITY SUBMISSION\nProvider: ${name}\nMonth: ${ml}\n\n`;
-  const avail=keys.filter(k=>dayData[k].type==='avail');const ooo=keys.filter(k=>dayData[k].type==='ooo');
-  if(avail.length){body+='AVAILABLE DAYS\n';avail.forEach(k=>{const d=dayData[k];const dt=new Date(k+'T00:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});const shifts=d.shifts.map((s,i)=>`${ORDINALS[i]||i+1+'th'} shift: ${fmtFull(s.start)}–${fmtFull(s.end)}`).join(', ')||'TBD';body+=`  ${dt}${hols[k]?' ['+hols[k]+']':''}: ${shifts}${d.notes?' — '+d.notes:''}\n`;});}
-  if(ooo.length){body+='\nTIME OFF\n';ooo.forEach(k=>{const d=dayData[k];const dt=new Date(k+'T00:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});body+=`  ${dt}${hols[k]?' ['+hols[k]+']':''}: OOO — ${d.adminAvail?'available for admin tasks (reviewing labs, approving Rxs, responding to emails)':'not available for admin tasks'}${d.notes?' — '+d.notes:''}\n`;});}
-  navigator.clipboard.writeText(body).then(()=>{const m=document.getElementById('copied-msg');if(m){m.style.display='inline';setTimeout(()=>m.style.display='none',2200);}});
-}
+
+
 document.getElementById('prov-name').addEventListener('input',renderSummary);
+loadFromURL();
 renderCal();
 </script>
 </body>

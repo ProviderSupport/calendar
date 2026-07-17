@@ -220,8 +220,8 @@ function copyEmailText(){
   let body=`AVAILABILITY SUBMISSION\nProvider: ${name}\nMonth: ${ml}\n\n`;
   const avail=keys.filter(k=>dayData[k].type==='avail');
   const ooo=keys.filter(k=>dayData[k].type==='ooo');
-  if(avail.length){body+='AVAILABLE DAYS\n';avail.forEach(k=>{const d=dayData[k];const dt=new Date(k+'T00:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});const shifts=d.shifts.map((s,i)=>`${ORDINALS[i]||i+1+'th'} shift: ${fmtFull(s.start)}–${fmtFull(s.end)}`).join(', ')||'TBD';body+=`  ${dt}${hols[k]?' ['+hols[k]+']':''}: ${shifts}\n`;});}
-  if(ooo.length){body+='\nTIME OFF\n';ooo.forEach(k=>{const d=dayData[k];const dt=new Date(k+'T00:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});body+=`  ${dt}${hols[k]?' ['+hols[k]+']':''}: OOO — ${d.adminAvail?'available for admin tasks (reviewing labs, approving Rxs, responding to emails)':'not available for admin tasks'}\n`;});}
+  if(avail.length){body+='AVAILABLE DAYS\n';avail.forEach(k=>{const d=dayData[k];const dt=new Date(k+'T00:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});const shifts=d.shifts.map(s=>`${fmtFull(s.start)}–${fmtFull(s.end)}`).join(', ')||'TBD';body+=`  ${dt}${hols[k]?' ['+hols[k]+']':''}: ${shifts}\n`;});}
+  if(ooo.length){body+='\nTIME OFF\n';ooo.forEach(k=>{const d=dayData[k];const dt=new Date(k+'T00:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});body+=`  ${dt}${hols[k]?' ['+hols[k]+']':''}: OOO — ${d.adminAvail?'yes, available for admin tasks':'no, not available for admin tasks'}\n`;});}
   navigator.clipboard.writeText(body).then(()=>showToast('Email text copied ✓'));
 }
 function loadFromURL(){
@@ -311,11 +311,11 @@ function shiftBlockHtml(s,idx,isNew){
   </div>`;
 }
 function rebuildShiftListOnly(){if(!selectedDate||!dayData[selectedDate])return;const list=document.getElementById('shift-list');if(list)list.innerHTML=dayData[selectedDate].shifts.map((s,i)=>shiftBlockHtml(s,i,false)).join('');}
-function updateSingleShift(idx){if(!selectedDate)return;const sEl=document.getElementById(`sh-${idx}-s`);const eEl=document.getElementById(`sh-${idx}-e`);if(!sEl||!eEl)return;if(!dayData[selectedDate])dayData[selectedDate]={type:'avail',shifts:[],adminAvail:false};while(dayData[selectedDate].shifts.length<=idx)dayData[selectedDate].shifts.push({start:'08:00',end:'17:00'});dayData[selectedDate].shifts[idx]={start:sEl.value,end:eEl.value};const badge=document.querySelector(`#shift-block-${idx} .shift-saved-time`);if(badge){badge.textContent=fmtTag(sEl.value,eEl.value);badge.classList.remove('unsaved','new');}
+function updateSingleShift(idx){if(!selectedDate)return;const sEl=document.getElementById(`sh-${idx}-s`);const eEl=document.getElementById(`sh-${idx}-e`);if(!sEl||!eEl)return;if(!dayData[selectedDate])dayData[selectedDate]={type:'avail',shifts:[],adminAvail:true};while(dayData[selectedDate].shifts.length<=idx)dayData[selectedDate].shifts.push({start:'08:00',end:'17:00'});dayData[selectedDate].shifts[idx]={start:sEl.value,end:eEl.value};const badge=document.querySelector(`#shift-block-${idx} .shift-saved-time`);if(badge){badge.textContent=fmtTag(sEl.value,eEl.value);badge.classList.remove('unsaved','new');}
   const btn=document.getElementById(`update-btn-${idx}`);if(btn)btn.textContent='Update time';
   renderCal();showToast(`Shift ${idx+1} saved ✓`);}
 function deleteShiftInPanel(idx){if(!selectedDate||!dayData[selectedDate])return;commitAllSelects();dayData[selectedDate].shifts.splice(idx,1);if(!dayData[selectedDate].shifts.length)delete dayData[selectedDate];dayData[selectedDate]?rebuildShiftListOnly():closePanel();renderCal();}
-function addShiftInPanel(){if(!selectedDate)return;commitAllSelects();if(!dayData[selectedDate])dayData[selectedDate]={type:'avail',shifts:[],adminAvail:false};dayData[selectedDate].type='avail';dayData[selectedDate].shifts.push({start:'08:00',end:'17:00'});const list=document.getElementById('shift-list');if(list){list.innerHTML=dayData[selectedDate].shifts.map((s,i)=>shiftBlockHtml(s,i,i===dayData[selectedDate].shifts.length-1)).join('');}renderCal();}
+function addShiftInPanel(){if(!selectedDate)return;commitAllSelects();if(!dayData[selectedDate])dayData[selectedDate]={type:'avail',shifts:[],adminAvail:true};dayData[selectedDate].type='avail';dayData[selectedDate].shifts.push({start:'08:00',end:'17:00'});const list=document.getElementById('shift-list');if(list){list.innerHTML=dayData[selectedDate].shifts.map((s,i)=>shiftBlockHtml(s,i,i===dayData[selectedDate].shifts.length-1)).join('');}renderCal();}
 function commitAllSelects(){if(!selectedDate||!dayData[selectedDate])return;dayData[selectedDate].shifts.forEach((_,i)=>{const sEl=document.getElementById(`sh-${i}-s`);const eEl=document.getElementById(`sh-${i}-e`);if(sEl)dayData[selectedDate].shifts[i].start=sEl.value;if(eEl)dayData[selectedDate].shifts[i].end=eEl.value;});}
 function getAllCurrentShifts(){if(!selectedDate||!dayData[selectedDate])return[];commitAllSelects();return dayData[selectedDate].shifts.map(s=>({...s}));}
 function buildMiniCal(sourceKey,prefix){
@@ -351,7 +351,7 @@ function oooApplySpecific(){if(!selectedDate||!oooSelectedSpecificDays.size)retu
 function openPanel(dayNum,key){
   selectedDate=key;
   const hols=getFederalHolidays(currentYear);const hol=hols[key];
-  const ex=dayData[key]?JSON.parse(JSON.stringify(dayData[key])):{type:'none',shifts:[{start:'08:00',end:'17:00'}],adminAvail:false};
+  const ex=dayData[key]?JSON.parse(JSON.stringify(dayData[key])):{type:'none',shifts:[{start:'08:00',end:'17:00'}],adminAvail:true};
   if(!ex.shifts||!ex.shifts.length)ex.shifts=[{start:'08:00',end:'17:00'}];
   if(!dayData[key])dayData[key]=JSON.parse(JSON.stringify(ex));
   currentPanelType=ex.type;
@@ -381,8 +381,8 @@ function openPanel(dayNum,key){
         <div class="admin-question">Available for admin tasks?</div>
         <div class="admin-examples">e.g. reviewing lab results, approving Rxs, responding to emails</div>
         <div class="admin-radio-row">
-          <label><input type="radio" name="admin" value="yes" ${ex.adminAvail?'checked':''}> Yes</label>
-          <label><input type="radio" name="admin" value="no" ${!ex.adminAvail?'checked':''}> No</label>
+          <label><input type="radio" name="admin" value="yes" ${ex.adminAvail!==false?'checked':''}> Yes</label>
+          <label><input type="radio" name="admin" value="no" ${ex.adminAvail===false?'checked':''}> No</label>
         </div>
       </div>
       ${buildRecurBox('ooo',key,oooSelectedDOWs)}
@@ -393,7 +393,7 @@ function openPanel(dayNum,key){
     </div>
   </div>`;
 }
-function setType(t){if(!selectedDate)return;commitAllSelects();currentPanelType=t;if(!dayData[selectedDate])dayData[selectedDate]={type:'none',shifts:[{start:'08:00',end:'17:00'}],adminAvail:false};dayData[selectedDate].type=t;openPanel(parseInt(selectedDate.split('-')[2]),selectedDate);}
+function setType(t){if(!selectedDate)return;commitAllSelects();currentPanelType=t;if(!dayData[selectedDate])dayData[selectedDate]={type:'none',shifts:[{start:'08:00',end:'17:00'}],adminAvail:true};dayData[selectedDate].type=t;openPanel(parseInt(selectedDate.split('-')[2]),selectedDate);}
 function saveDay(){if(!selectedDate)return;commitAllSelects();const type=currentPanelType;const adminEl=document.querySelector('input[name="admin"]:checked');if(type==='none'){delete dayData[selectedDate];}else{dayData[selectedDate]={type,shifts:type==='avail'?(dayData[selectedDate]?.shifts||[]):[],adminAvail:type==='ooo'?adminEl?.value==='yes':false};}closePanel();renderCal();}
 function closePanel(){document.getElementById('day-panel').style.display='none';selectedDate=null;currentPanelType='none';}
 
@@ -442,11 +442,11 @@ function sendEmail(){
   const ml=getMonthLabel();
   const hols=getFederalHolidays(currentYear);
   const keys=Object.keys(dayData).filter(k=>dayData[k].type!=='none').sort();
-  let body=`Availability Submission\nProvider: ${name}\nMonth(s): ${ml}\n\n`;
+  let body=`Availability Submission — ${ml}\n\n`;
   const avail=keys.filter(k=>dayData[k].type==='avail');
   const ooo=keys.filter(k=>dayData[k].type==='ooo');
-  if(avail.length){body+='AVAILABLE DAYS\n';avail.forEach(k=>{const[ky,km,kd]=k.split('-');const hols2=getFederalHolidays(+ky);const d=dayData[k];const dt=new Date(+ky,+km-1,+kd).toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});const shifts=d.shifts.map((s,i)=>`${ORDINALS[i]||i+1+'th'} shift: ${fmtFull(s.start)}–${fmtFull(s.end)}`).join(', ')||'TBD';body+=`  ${dt}${hols2[k]?' ['+hols2[k]+']':''}: ${shifts}\n`;});}
-  if(ooo.length){body+='\nTIME OFF\n';ooo.forEach(k=>{const[ky,km,kd]=k.split('-');const hols2=getFederalHolidays(+ky);const d=dayData[k];const dt=new Date(+ky,+km-1,+kd).toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});body+=`  ${dt}${hols2[k]?' ['+hols2[k]+']':''}: OOO — ${d.adminAvail?'available for admin tasks (reviewing labs, approving Rxs, responding to emails)':'not available for admin tasks'}\n`;});}
+  if(avail.length){body+='AVAILABLE DAYS\n';avail.forEach(k=>{const[ky,km,kd]=k.split('-');const hols2=getFederalHolidays(+ky);const d=dayData[k];const dt=new Date(+ky,+km-1,+kd).toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});const shifts=d.shifts.map(s=>`${fmtFull(s.start)}–${fmtFull(s.end)}`).join(', ')||'TBD';body+=`  ${dt}${hols2[k]?' ['+hols2[k]+']':''}: ${shifts}\n`;});}
+  if(ooo.length){body+='\nTIME OFF\n';ooo.forEach(k=>{const[ky,km,kd]=k.split('-');const hols2=getFederalHolidays(+ky);const d=dayData[k];const dt=new Date(+ky,+km-1,+kd).toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});body+=`  ${dt}${hols2[k]?' ['+hols2[k]+']':''}: OOO — ${d.adminAvail?'yes, available for admin tasks':'no, not available for admin tasks'}\n`;});}
   const subject=encodeURIComponent(`Availability Submission — ${ml}`);
   const encodedBody=encodeURIComponent(body);
   window.location.href=`mailto:providers@honehealth.zendesk.com?subject=${subject}&body=${encodedBody}`;

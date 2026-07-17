@@ -254,17 +254,17 @@ function onSelectChange(id){
 
 const mp=document.getElementById('month-pick');
 mp.value=`${currentYear}-${p2(currentMonth+1)}`;
-mp.addEventListener('change',e=>{const[y,m]=e.target.value.split('-');currentYear=+y;currentMonth=+m-1;closePanel();renderCal();});
-function changeMonth(d){currentMonth+=d;if(currentMonth>11){currentMonth=0;currentYear++;}if(currentMonth<0){currentMonth=11;currentYear--;}mp.value=`${currentYear}-${p2(currentMonth+1)}`;closePanel();renderCal();}
+mp.addEventListener('change',e=>{const[y,m]=e.target.value.split('-');currentYear=+y;currentMonth=+m-1;closePanel();refresh();});
+function changeMonth(d){currentMonth+=d;if(currentMonth>11){currentMonth=0;currentYear++;}if(currentMonth<0){currentMonth=11;currentYear--;}mp.value=`${currentYear}-${p2(currentMonth+1)}`;closePanel();refresh();}
 
 function removeShiftFromDay(key,idx,e){
   e.stopPropagation();if(!dayData[key])return;
   dayData[key].shifts.splice(idx,1);
   if(!dayData[key].shifts.length)delete dayData[key];
   if(selectedDate===key){dayData[key]?rebuildShiftListOnly():closePanel();}
-  renderCal();
+  refresh();
 }
-function renderCal(){
+function _renderCal(){
   const hols=getFederalHolidays(currentYear);
   document.getElementById('month-label').textContent=new Date(currentYear,currentMonth,1).toLocaleString('default',{month:'long',year:'numeric'});
   const grid=document.getElementById('cal-grid');grid.querySelectorAll('.day').forEach(c=>c.remove());
@@ -287,9 +287,9 @@ function renderCal(){
     d.innerHTML=inner;d.addEventListener('click',()=>openPanel(i,key));grid.appendChild(d);
   }
   const rem=(7-(first+dim)%7)%7;for(let i=1;i<=rem;i++){const d=document.createElement('div');d.className='day other-month';d.innerHTML=`<div class="day-num">${i}</div>`;grid.appendChild(d);}
-  renderSummary();
+  refresh();
 }
-function removeDay(e,key){e.stopPropagation();delete dayData[key];if(selectedDate===key)closePanel();renderCal();}
+function removeDay(e,key){e.stopPropagation();delete dayData[key];if(selectedDate===key)closePanel();refresh();}
 function shiftBlockHtml(s,idx,isNew){
   const ordinal=ORDINALS[idx]||`${idx+1}th`;
   const badgeCls=isNew?'shift-saved-time new':'shift-saved-time';
@@ -313,9 +313,9 @@ function shiftBlockHtml(s,idx,isNew){
 function rebuildShiftListOnly(){if(!selectedDate||!dayData[selectedDate])return;const list=document.getElementById('shift-list');if(list)list.innerHTML=dayData[selectedDate].shifts.map((s,i)=>shiftBlockHtml(s,i,false)).join('');}
 function updateSingleShift(idx){if(!selectedDate)return;const sEl=document.getElementById(`sh-${idx}-s`);const eEl=document.getElementById(`sh-${idx}-e`);if(!sEl||!eEl)return;if(!dayData[selectedDate])dayData[selectedDate]={type:'avail',shifts:[],adminAvail:true};while(dayData[selectedDate].shifts.length<=idx)dayData[selectedDate].shifts.push({start:'08:00',end:'17:00'});dayData[selectedDate].shifts[idx]={start:sEl.value,end:eEl.value};sortShifts(dayData[selectedDate].shifts);const badge=document.querySelector(`#shift-block-${idx} .shift-saved-time`);if(badge){badge.textContent=fmtTag(sEl.value,eEl.value);badge.classList.remove('unsaved','new');}
   const btn=document.getElementById(`update-btn-${idx}`);if(btn)btn.textContent='Update time';
-  renderCal();showToast(`Shift ${idx+1} saved ✓`);}
-function deleteShiftInPanel(idx){if(!selectedDate||!dayData[selectedDate])return;commitAllSelects();dayData[selectedDate].shifts.splice(idx,1);if(!dayData[selectedDate].shifts.length)delete dayData[selectedDate];dayData[selectedDate]?rebuildShiftListOnly():closePanel();renderCal();}
-function addShiftInPanel(){if(!selectedDate)return;commitAllSelects();if(!dayData[selectedDate])dayData[selectedDate]={type:'avail',shifts:[],adminAvail:true};dayData[selectedDate].type='avail';dayData[selectedDate].shifts.push({start:'08:00',end:'17:00'});const list=document.getElementById('shift-list');if(list){list.innerHTML=dayData[selectedDate].shifts.map((s,i)=>shiftBlockHtml(s,i,i===dayData[selectedDate].shifts.length-1)).join('');}renderCal();}
+  refresh();showToast(`Shift ${idx+1} saved ✓`);}
+function deleteShiftInPanel(idx){if(!selectedDate||!dayData[selectedDate])return;commitAllSelects();dayData[selectedDate].shifts.splice(idx,1);if(!dayData[selectedDate].shifts.length)delete dayData[selectedDate];dayData[selectedDate]?rebuildShiftListOnly():closePanel();refresh();}
+function addShiftInPanel(){if(!selectedDate)return;commitAllSelects();if(!dayData[selectedDate])dayData[selectedDate]={type:'avail',shifts:[],adminAvail:true};dayData[selectedDate].type='avail';dayData[selectedDate].shifts.push({start:'08:00',end:'17:00'});const list=document.getElementById('shift-list');if(list){list.innerHTML=dayData[selectedDate].shifts.map((s,i)=>shiftBlockHtml(s,i,i===dayData[selectedDate].shifts.length-1)).join('');}refresh();}
 function commitAllSelects(){if(!selectedDate||!dayData[selectedDate])return;dayData[selectedDate].shifts.forEach((_,i)=>{const sEl=document.getElementById(`sh-${i}-s`);const eEl=document.getElementById(`sh-${i}-e`);if(sEl)dayData[selectedDate].shifts[i].start=sEl.value;if(eEl)dayData[selectedDate].shifts[i].end=eEl.value;});}
 function getAllCurrentShifts(){if(!selectedDate||!dayData[selectedDate])return[];commitAllSelects();return dayData[selectedDate].shifts.map(s=>({...s}));}
 function buildMiniCal(sourceKey,prefix){
@@ -325,6 +325,15 @@ function buildMiniCal(sourceKey,prefix){
   for(let i=0;i<first;i++){html+=`<div class="mini-day other">${prev-first+i+1}</div>`;}
   for(let i=1;i<=dim;i++){const key=dateKey(currentYear,currentMonth,i);const isSrc=key===sourceKey;const isSel=selSet.has(key);let cls='mini-day';if(isSrc)cls+=' is-source';else if(isSel)cls+=' selected';html+=`<div class="${cls}"${isSrc?'':` onclick="${prefix}ToggleSpecific('${key}')"`}>${i}</div>`;}
   const rem=(7-(first+dim)%7)%7;for(let i=1;i<=rem;i++){html+=`<div class="mini-day other">${i}</div>`;}return html+'</div>';
+}
+function refresh(){cleanDayData();_renderCal();_renderSummary();}
+function cleanDayData(){
+  Object.keys(dayData).forEach(k=>{
+    const d=dayData[k];
+    if(!d||!d.type||d.type==='none'){delete dayData[k];return;}
+    if(d.type==='avail'&&(!d.shifts||!d.shifts.length)){delete dayData[k];return;}
+    if(d.type==='ooo'&&d.adminAvail===undefined){delete dayData[k];return;}
+  });
 }
 function sortShifts(shifts){return shifts.sort((a,b)=>{const ta=+a.start.split(':')[0]*60+ +a.start.split(':')[1];const tb=+b.start.split(':')[0]*60+ +b.start.split(':')[1];return ta-tb;});}
 function buildRecurBox(prefix,sourceKey,dowSet){
@@ -341,13 +350,13 @@ function buildRecurBox(prefix,sourceKey,dowSet){
 function availToggleDOW(di){if(selectedDOWs.has(di))selectedDOWs.delete(di);else selectedDOWs.add(di);document.querySelectorAll('#avail-dow-content .dow-chip').forEach(c=>c.classList.toggle('selected',selectedDOWs.has(+c.dataset.dow)));}
 function availSwitchTab(tab){recurTab=tab;document.getElementById('avail-tab-dow').classList.toggle('active',tab==='dow');document.getElementById('avail-tab-specific').classList.toggle('active',tab==='specific');document.getElementById('avail-dow-content').style.display=tab==='dow'?'block':'none';document.getElementById('avail-specific-content').style.display=tab==='specific'?'block':'none';}
 function availToggleSpecific(key){if(selectedSpecificDays.has(key))selectedSpecificDays.delete(key);else selectedSpecificDays.add(key);const mc=document.getElementById('avail-mini-cal-wrap');if(mc)mc.innerHTML=buildMiniCal(selectedDate,'avail');}
-function availApplyDOW(){if(!selectedDate||!selectedDOWs.size)return;const shifts=getAllCurrentShifts();const names=[];selectedDOWs.forEach(di=>{getDaysOfDOW(di).forEach(k=>{dayData[k]={type:'avail',shifts:shifts.map(s=>({...s})),adminAvail:false};});names.push(DOWS[di]+'s');});closePanel();renderCal();showToast(`Applied to all ${names.join(', ')} ✓`);}
-function availApplySpecific(){if(!selectedDate||!selectedSpecificDays.size)return;const shifts=getAllCurrentShifts();const ss=shifts.map(s=>({...s}));sortShifts(ss);dayData[selectedDate]={type:'avail',shifts:ss,adminAvail:false};selectedSpecificDays.forEach(k=>{dayData[k]={type:'avail',shifts:ss.map(s=>({...s})),adminAvail:false};});const count=selectedSpecificDays.size;closePanel();renderCal();showToast(`Applied to ${count} day${count>1?'s':''} ✓`);}
+function availApplyDOW(){if(!selectedDate||!selectedDOWs.size)return;const shifts=getAllCurrentShifts();const names=[];selectedDOWs.forEach(di=>{getDaysOfDOW(di).forEach(k=>{dayData[k]={type:'avail',shifts:shifts.map(s=>({...s})),adminAvail:false};});names.push(DOWS[di]+'s');});closePanel();refresh();showToast(`Applied to all ${names.join(', ')} ✓`);}
+function availApplySpecific(){if(!selectedDate||!selectedSpecificDays.size)return;const shifts=getAllCurrentShifts();const ss=shifts.map(s=>({...s}));sortShifts(ss);dayData[selectedDate]={type:'avail',shifts:ss,adminAvail:false};selectedSpecificDays.forEach(k=>{dayData[k]={type:'avail',shifts:ss.map(s=>({...s})),adminAvail:false};});const count=selectedSpecificDays.size;closePanel();refresh();showToast(`Applied to ${count} day${count>1?'s':''} ✓`);}
 function oooToggleDOW(di){if(oooSelectedDOWs.has(di))oooSelectedDOWs.delete(di);else oooSelectedDOWs.add(di);document.querySelectorAll('#ooo-dow-content .dow-chip').forEach(c=>c.classList.toggle('selected',oooSelectedDOWs.has(+c.dataset.dow)));}
 function oooSwitchTab(tab){oooRecurTab=tab;document.getElementById('ooo-tab-dow').classList.toggle('active',tab==='dow');document.getElementById('ooo-tab-specific').classList.toggle('active',tab==='specific');document.getElementById('ooo-dow-content').style.display=tab==='dow'?'block':'none';document.getElementById('ooo-specific-content').style.display=tab==='specific'?'block':'none';}
 function oooToggleSpecific(key){if(oooSelectedSpecificDays.has(key))oooSelectedSpecificDays.delete(key);else oooSelectedSpecificDays.add(key);const mc=document.getElementById('ooo-mini-cal-wrap');if(mc)mc.innerHTML=buildMiniCal(selectedDate,'ooo');}
-function oooApplyDOW(){if(!selectedDate||!oooSelectedDOWs.size)return;const adminEl=document.querySelector('input[name="admin"]:checked');const adminAvail=adminEl?.value==='yes';const names=[];oooSelectedDOWs.forEach(di=>{getDaysOfDOW(di).forEach(k=>{dayData[k]={type:'ooo',shifts:[],adminAvail};});names.push(DOWS[di]+'s');});closePanel();renderCal();showToast(`OOO applied to all ${names.join(', ')} ✓`);}
-function oooApplySpecific(){if(!selectedDate||!oooSelectedSpecificDays.size)return;const adminEl=document.querySelector('input[name="admin"]:checked');const adminAvail=adminEl?.value==='yes';dayData[selectedDate]={type:'ooo',shifts:[],adminAvail};oooSelectedSpecificDays.forEach(k=>{dayData[k]={type:'ooo',shifts:[],adminAvail};});const count=oooSelectedSpecificDays.size;closePanel();renderCal();showToast(`OOO applied to ${count} day${count>1?'s':''} ✓`);}
+function oooApplyDOW(){if(!selectedDate||!oooSelectedDOWs.size)return;const adminEl=document.querySelector('input[name="admin"]:checked');const adminAvail=adminEl?.value==='yes';const names=[];oooSelectedDOWs.forEach(di=>{getDaysOfDOW(di).forEach(k=>{dayData[k]={type:'ooo',shifts:[],adminAvail};});names.push(DOWS[di]+'s');});closePanel();refresh();showToast(`OOO applied to all ${names.join(', ')} ✓`);}
+function oooApplySpecific(){if(!selectedDate||!oooSelectedSpecificDays.size)return;const adminEl=document.querySelector('input[name="admin"]:checked');const adminAvail=adminEl?.value==='yes';dayData[selectedDate]={type:'ooo',shifts:[],adminAvail};oooSelectedSpecificDays.forEach(k=>{dayData[k]={type:'ooo',shifts:[],adminAvail};});const count=oooSelectedSpecificDays.size;closePanel();refresh();showToast(`OOO applied to ${count} day${count>1?'s':''} ✓`);}
 
 function openPanel(dayNum,key){
   selectedDate=key;
@@ -395,10 +404,10 @@ function openPanel(dayNum,key){
   </div>`;
 }
 function setType(t){if(!selectedDate)return;commitAllSelects();currentPanelType=t;if(!dayData[selectedDate])dayData[selectedDate]={type:'none',shifts:[{start:'08:00',end:'17:00'}],adminAvail:true};dayData[selectedDate].type=t;openPanel(parseInt(selectedDate.split('-')[2]),selectedDate);}
-function saveDay(){if(!selectedDate)return;commitAllSelects();const type=currentPanelType;const adminEl=document.querySelector('input[name="admin"]:checked');if(type==='none'){delete dayData[selectedDate];}else{const s=type==='avail'?(dayData[selectedDate]?.shifts||[]):[];if(type==='avail')sortShifts(s);dayData[selectedDate]={type,shifts:s,adminAvail:type==='ooo'?adminEl?.value==='yes':false};}closePanel();renderCal();}
+function saveDay(){if(!selectedDate)return;commitAllSelects();const type=currentPanelType;const adminEl=document.querySelector('input[name="admin"]:checked');if(type==='none'){delete dayData[selectedDate];}else{const s=type==='avail'?(dayData[selectedDate]?.shifts||[]):[];if(type==='avail')sortShifts(s);dayData[selectedDate]={type,shifts:s,adminAvail:type==='ooo'?adminEl?.value==='yes':false};}closePanel();refresh();}
 function closePanel(){document.getElementById('day-panel').style.display='none';selectedDate=null;currentPanelType='none';}
 
-function renderSummary(){
+function _renderSummary(){
   const name=document.getElementById('prov-name').value||'—';
   const keys=Object.keys(dayData).filter(k=>dayData[k].type!=='none').sort();
   const sec=document.getElementById('summary-section');if(!keys.length){sec.innerHTML='';return;}
@@ -453,9 +462,9 @@ function sendEmail(){
   window.location.href=`mailto:providers@honehealth.zendesk.com?subject=${subject}&body=${encodedBody}`;
 }
 
-document.getElementById('prov-name').addEventListener('input',renderSummary);
+document.getElementById('prov-name').addEventListener('input',refresh);
 loadFromURL();
-renderCal();
+refresh();
 </script>
 </body>
 </html>

@@ -186,19 +186,59 @@ function loadFromURL(){
 }
 
 // Share actions
-function downloadPDF(){
+async function downloadPDF(){
   const btn=document.getElementById('pdf-btn');btn.classList.add('loading');btn.innerHTML='<i class="ti ti-loader" style="font-size:14px"></i> Generating…';
   closePanel();
-  html2canvas(document.getElementById('main-container'),{scale:2,backgroundColor:'#ffffff',useCORS:true}).then(canvas=>{
-    const{jsPDF}=window.jspdf;const pdf=new jsPDF({orientation:'portrait',unit:'pt',format:'a4'});
-    const pw=pdf.internal.pageSize.getWidth();const iw=pw-40;const ih=(canvas.height/canvas.width)*iw;
+
+  // Find all unique year-months with data
+  const allKeys=Object.keys(dayData).filter(k=>dayData[k]&&dayData[k].type&&dayData[k].type!=='none').sort();
+  const seen=new Map();
+  allKeys.forEach(k=>{const[y,m]=k.split('-');const ym=`${y}-${m}`;if(!seen.has(ym))seen.set(ym,{y:+y,m:+m-1,ym});});
+  const months=seen.size>0?[...seen.values()]:[{y:currentYear,m:currentMonth,ym:`${currentYear}-${String(currentMonth+1).padStart(2,'0')}`}];
+
+  // Save current state
+  const savedYear=currentYear,savedMonth=currentMonth;
+  const savedData=JSON.parse(JSON.stringify(dayData));
+
+  const{jsPDF}=window.jspdf;
+  const pdf=new jsPDF({orientation:'portrait',unit:'pt',format:'a4'});
+  const pw=pdf.internal.pageSize.getWidth();const iw=pw-40;
+  let firstPage=true;
+
+  for(const{y,m,ym} of months){
+    // Temporarily filter dayData to only this month so summary shows just this month
+    Object.keys(dayData).forEach(k=>{
+      const[ky,km]=k.split('-');
+      const thisYM=`${ky}-${km}`;
+      if(thisYM!==ym)delete dayData[k];
+    });
+
+    currentYear=y;currentMonth=m;
+    document.getElementById('month-pick').value=`${y}-${String(m+1).padStart(2,'0')}`;
+    refresh();
+    await new Promise(r=>setTimeout(r,150));
+
+    const canvas=await html2canvas(document.getElementById('main-container'),{scale:2,backgroundColor:'#ffffff',useCORS:true});
+    if(!firstPage)pdf.addPage();
+    firstPage=false;
+    const ih=(canvas.height/canvas.width)*iw;
     pdf.addImage(canvas.toDataURL('image/png'),'PNG',20,20,iw,ih);
-    const name=(document.getElementById('prov-name').value||'availability').replace(/\s+/g,'_');
-    const mo=getMonthLabel().replace(/[\/\s]+/g,'_');
-    pdf.save(`${name}_${mo}.pdf`);
-    btn.classList.remove('loading');btn.innerHTML='<i class="ti ti-file-type-pdf" style="font-size:14px"></i> Download PDF';
-    showToast('PDF downloaded ✓');
-  });
+
+    // Restore all data for next iteration
+    Object.assign(dayData,savedData);
+  }
+
+  // Restore original view
+  Object.assign(dayData,savedData);
+  currentYear=savedYear;currentMonth=savedMonth;
+  document.getElementById('month-pick').value=`${savedYear}-${String(savedMonth+1).padStart(2,'0')}`;
+  refresh();
+
+  const name=(document.getElementById('prov-name').value||'availability').replace(/\s+/g,'_');
+  const mo=getMonthLabel().replace(/[\/\s]+/g,'_');
+  pdf.save(`${name}_${mo}.pdf`);
+  btn.classList.remove('loading');btn.innerHTML='<i class="ti ti-file-type-pdf" style="font-size:14px"></i> Download PDF';
+  showToast('PDF downloaded ✓');
 }
 function getMonthLabel(){
   const keys=Object.keys(dayData).filter(k=>dayData[k]&&dayData[k].type&&dayData[k].type!=='none').sort();
@@ -250,7 +290,21 @@ function sendEmail(){
   let body=`Availability Submission — ${ml}${name?'\nProvider name: '+name:'\nProvider name: '}\n\n`;
   const avail=keys.filter(k=>dayData[k].type==='avail');
   const ooo=keys.filter(k=>dayData[k].type==='ooo');
-  if(avail.length){body+='AVAILABLE DAYS\n';avail.forEach(k=>{const[ky,km,kd]=k.split('-');const hols2=getFederalHolidays(+ky);const d=dayData[k];const dt=new Date(+ky,+km-1,+kd).toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});const shifts=d.shifts.map(s=>`${fmtFull(s.start)}–${fmtFull(s.end)}`).join(', ')||'TBD';body+=`  ${dt}${hols2[k]?' ['+hols2[k]+']':''}: ${shifts}\n`;});}
+  if(avail.length){
+    body+='AVAILABLE DAYS\n';
+    let lastWeek=null;
+    avail.forEach(k=>{
+      const[ky,km,kd]=k.split('-');const hols2=getFederalHolidays(+ky);const d=dayData[k];
+      const dt=new Date(+ky,+km-1,+kd);
+      const day=dt.getDay();const sunday=new Date(dt);sunday.setDate(dt.getDate()-day);
+      const weekNum=sunday.getFullYear()*10000+sunday.getMonth()*100+sunday.getDate();
+      if(lastWeek!==null&&weekNum!==lastWeek)body+='\n';
+      lastWeek=weekNum;
+      const dtStr=dt.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+      const shifts=(d.shifts||[]).map(s=>`${fmtFull(s.start)}–${fmtFull(s.end)}`).join(', ')||'TBD';
+      body+=`  ${dtStr}${hols2[k]?' ['+hols2[k]+']':''}: ${shifts}\n`;
+    });
+  }
   if(ooo.length){body+='\nTIME OFF\n';ooo.forEach(k=>{const[ky,km,kd]=k.split('-');const hols2=getFederalHolidays(+ky);const d=dayData[k];const dt=new Date(+ky,+km-1,+kd).toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});body+=`  ${dt}${hols2[k]?' ['+hols2[k]+']':''}: OOO — ${d.adminAvail?'yes, available for admin tasks':'no, not available for admin tasks'}\n`;});}
   const subject=encodeURIComponent(`Availability Submission — ${ml}`);
   window.location.href=`mailto:providers@honehealth.zendesk.com?subject=${subject}&body=${encodeURIComponent(body)}`;

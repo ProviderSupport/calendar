@@ -115,7 +115,7 @@ button{font-family:var(--font-sans)}
     <span id="share-banner-text"></span>
   </div>
   <div class="top-row">
-    <div><label>Provider name</label><br><input type="text" id="prov-name" style="margin-top:4px;width:200px"></div>
+    <div><label style="font-size:13px;color:var(--text-secondary)">Provider name <span style="color:#dc2626;font-weight:600">*</span></label><br><input type="text" id="prov-name" placeholder="Type your full name" style="margin-top:4px;width:220px;border-color:#d1d5db;border-width:1px"></div>
     <div><label>Month</label><br><input type="month" id="month-pick" style="margin-top:4px;width:160px"></div>
   </div>
   <div class="nav-row">
@@ -211,12 +211,24 @@ function getMonthLabel(){
   if(years.length===1)return dates.map(d=>d.toLocaleString('default',{month:'long'})).join('/')+' '+years[0];
   return dates.map(d=>d.toLocaleString('default',{month:'long',year:'numeric'})).join(' / ');
 }
-function sendEmail(){
-  const name=document.getElementById('prov-name').value||'Provider';
+function copyEmailText(){
+  const name=document.getElementById('prov-name').value||'';
   const ml=getMonthLabel();
   const hols=getFederalHolidays(currentYear);
   const keys=Object.keys(dayData).filter(k=>dayData[k]&&dayData[k].type&&dayData[k].type!=='none').sort();
-  let body=`Availability Submission — ${ml}\nProvider: ${name}\n\n`;
+  let body=`Availability Submission — ${ml}${name?'\nProvider name: '+name:'\nProvider name: '}\n\n`;
+  const avail=keys.filter(k=>dayData[k].type==='avail');
+  const ooo=keys.filter(k=>dayData[k].type==='ooo');
+  if(avail.length){body+='AVAILABLE DAYS\n';avail.forEach(k=>{const[ky,km,kd]=k.split('-');const hols2=getFederalHolidays(+ky);const d=dayData[k];const dt=new Date(+ky,+km-1,+kd).toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});const shifts=(d.shifts||[]).map(s=>`${fmtFull(s.start)}–${fmtFull(s.end)}`).join(', ')||'TBD';body+=`  ${dt}${hols2[k]?' ['+hols2[k]+']':''}: ${shifts}\n`;});}
+  if(ooo.length){body+='\nTIME OFF\n';ooo.forEach(k=>{const[ky,km,kd]=k.split('-');const hols2=getFederalHolidays(+ky);const d=dayData[k];const dt=new Date(+ky,+km-1,+kd).toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});body+=`  ${dt}${hols2[k]?' ['+hols2[k]+']':''}: OOO — ${d.adminAvail?'yes, available for admin tasks':'no, not available for admin tasks'}\n`;});}
+  navigator.clipboard.writeText(body).then(()=>showToast('Copied to clipboard ✓'));
+}
+function sendEmail(){
+  const name=document.getElementById('prov-name').value||'';
+  const ml=getMonthLabel();
+  const hols=getFederalHolidays(currentYear);
+  const keys=Object.keys(dayData).filter(k=>dayData[k]&&dayData[k].type&&dayData[k].type!=='none').sort();
+  let body=`Availability Submission — ${ml}${name?'\nProvider name: '+name:'\nProvider name: '}\n\n`;
   const avail=keys.filter(k=>dayData[k].type==='avail');
   const ooo=keys.filter(k=>dayData[k].type==='ooo');
   if(avail.length){body+='AVAILABLE DAYS\n';avail.forEach(k=>{const[ky,km,kd]=k.split('-');const hols2=getFederalHolidays(+ky);const d=dayData[k];const dt=new Date(+ky,+km-1,+kd).toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});const shifts=d.shifts.map(s=>`${fmtFull(s.start)}–${fmtFull(s.end)}`).join(', ')||'TBD';body+=`  ${dt}${hols2[k]?' ['+hols2[k]+']':''}: ${shifts}\n`;});}
@@ -304,12 +316,15 @@ function refresh(){
   }
   html+=`<div class="action-row">
     <div class="action-label">Share your availability</div>
-    <div style="width:100%;background:#f0fdf4;border:0.5px solid #bbf7d0;border-radius:6px;padding:10px 14px;font-size:13px;color:#166534;display:flex;align-items:flex-start;gap:8px;margin-bottom:4px">
-      <i class="ti ti-info-circle" style="font-size:16px;flex-shrink:0;margin-top:1px"></i>
-      <span><strong>Three steps to submit:</strong><br>1) First click <em>Download PDF</em> to save your calendar.<br>2) Then, click <em>Send email to Hone</em> — your email app will open pre-filled.<br>3) Please attach the PDF before sending.</span>
+    <div style="width:100%;background:#f0fdf4;border:0.5px solid #bbf7d0;border-radius:6px;padding:12px 14px;font-size:13px;color:#166534;margin-bottom:10px">
+      <div style="font-weight:600;margin-bottom:8px">You have 3 different ways to submit your availability:</div>
+      <div style="margin-bottom:6px;display:flex;gap:8px;align-items:flex-start"><span style="font-weight:600;flex-shrink:0">1.</span><span>Download the PDF and attach it when emailing from your Hone email</span></div>
+      <div style="margin-bottom:6px;display:flex;gap:8px;align-items:flex-start"><span style="font-weight:600;flex-shrink:0">2.</span><span>Copy/paste the summary text when emailing from your Hone email</span></div>
+      <div style="display:flex;gap:8px;align-items:flex-start"><span style="font-weight:600;flex-shrink:0">3.</span><span>Click <em>Send email</em> which will open your email app pre-filled <em style="font-weight:500">(keep in mind the email associated with your email app may not be your Hone email)</em></span></div>
     </div>
     <button class="btn-primary" id="pdf-btn" onclick="downloadPDF()"><i class="ti ti-file-type-pdf" style="font-size:14px"></i> Download PDF</button>
-    <button class="btn-primary" onclick="sendEmail()"><i class="ti ti-send" style="font-size:14px"></i> Send email to Hone</button>
+    <button class="btn-primary" onclick="copyEmailText()"><i class="ti ti-copy" style="font-size:14px"></i> Copy text</button>
+    <button class="btn-primary" onclick="sendEmail()"><i class="ti ti-send" style="font-size:14px"></i> Send email</button>
   </div></div>`;
   sec.innerHTML=html;
 }
@@ -415,19 +430,19 @@ function buildRecurBox(prefix,sourceKey){
 
 function availToggleSpecific(key){if(selectedSpecificDays.has(key))selectedSpecificDays.delete(key);else selectedSpecificDays.add(key);const mc=document.getElementById('avail-mini-cal-wrap');if(mc)mc.innerHTML=buildMiniCal(selectedDate,'avail');}
 function availApplySpecific(){
-  if(!selectedDate||!selectedSpecificDays.size)return;
+  if(!selectedDate)return;
   const shifts=getAllCurrentShifts();sortShifts(shifts);
   dayData[selectedDate]={type:'avail',shifts:shifts.map(s=>({...s})),adminAvail:true};
   selectedSpecificDays.forEach(k=>{dayData[k]={type:'avail',shifts:shifts.map(s=>({...s})),adminAvail:true};});
-  const count=selectedSpecificDays.size;closePanel();refresh();showToast(`Applied to ${count} day${count>1?'s':''} ✓`);
+  const count=selectedSpecificDays.size;closePanel();refresh();showToast(count>0?`Applied to ${count+1} day${count>0?'s':''} ✓`:'Saved ✓');
 }
 function oooToggleSpecific(key){if(oooSelectedSpecificDays.has(key))oooSelectedSpecificDays.delete(key);else oooSelectedSpecificDays.add(key);const mc=document.getElementById('ooo-mini-cal-wrap');if(mc)mc.innerHTML=buildMiniCal(selectedDate,'ooo');}
 function oooApplySpecific(){
-  if(!selectedDate||!oooSelectedSpecificDays.size)return;
+  if(!selectedDate)return;
   const adminEl=document.querySelector('input[name="admin"]:checked');const adminAvail=adminEl?.value!=='no';
   dayData[selectedDate]={type:'ooo',shifts:[],adminAvail};
   oooSelectedSpecificDays.forEach(k=>{dayData[k]={type:'ooo',shifts:[],adminAvail};});
-  const count=oooSelectedSpecificDays.size;closePanel();refresh();showToast(`OOO applied to ${count} day${count>1?'s':''} ✓`);
+  const count=oooSelectedSpecificDays.size;closePanel();refresh();showToast(count>0?`OOO applied to ${count+1} day${count>0?'s':''} ✓`:'OOO saved ✓');
 }
 
 function openPanel(dayNum,key){

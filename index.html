@@ -219,7 +219,26 @@ function copyEmailText(){
   let body=`Availability Submission — ${ml}${name?'\nProvider name: '+name:'\nProvider name: '}\n\n`;
   const avail=keys.filter(k=>dayData[k].type==='avail');
   const ooo=keys.filter(k=>dayData[k].type==='ooo');
-  if(avail.length){body+='AVAILABLE DAYS\n';avail.forEach(k=>{const[ky,km,kd]=k.split('-');const hols2=getFederalHolidays(+ky);const d=dayData[k];const dt=new Date(+ky,+km-1,+kd).toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});const shifts=(d.shifts||[]).map(s=>`${fmtFull(s.start)}–${fmtFull(s.end)}`).join(', ')||'TBD';body+=`  ${dt}${hols2[k]?' ['+hols2[k]+']':''}: ${shifts}\n`;});}
+  if(avail.length){
+    body+='AVAILABLE DAYS\n';
+    let lastWeek=null;
+    avail.forEach(k=>{
+      const[ky,km,kd]=k.split('-');
+      const hols2=getFederalHolidays(+ky);
+      const d=dayData[k];
+      const dt=new Date(+ky,+km-1,+kd);
+      // get week number (Sunday-based)
+      // Get Sunday of this week (Sun-Sat week)
+      const day=dt.getDay(); // 0=Sun, 6=Sat
+      const sunday=new Date(dt);sunday.setDate(dt.getDate()-day);
+      const weekNum=sunday.getFullYear()*100+sunday.getMonth()*5+sunday.getDate();
+      if(lastWeek!==null&&weekNum!==lastWeek)body+='\n';
+      lastWeek=weekNum;
+      const dtStr=dt.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+      const shifts=(d.shifts||[]).map(s=>`${fmtFull(s.start)}–${fmtFull(s.end)}`).join(', ')||'TBD';
+      body+=`  ${dtStr}${hols2[k]?' ['+hols2[k]+']':''}: ${shifts}\n`;
+    });
+  }
   if(ooo.length){body+='\nTIME OFF\n';ooo.forEach(k=>{const[ky,km,kd]=k.split('-');const hols2=getFederalHolidays(+ky);const d=dayData[k];const dt=new Date(+ky,+km-1,+kd).toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});body+=`  ${dt}${hols2[k]?' ['+hols2[k]+']':''}: OOO — ${d.adminAvail?'yes, available for admin tasks':'no, not available for admin tasks'}\n`;});}
   navigator.clipboard.writeText(body).then(()=>showToast('Copied to clipboard ✓'));
 }
@@ -318,7 +337,7 @@ function refresh(){
     <div class="action-label">Share your availability</div>
     <div style="width:100%;background:#f0fdf4;border:0.5px solid #bbf7d0;border-radius:6px;padding:12px 14px;font-size:13px;color:#166534;margin-bottom:10px">
       <div style="font-weight:600;margin-bottom:8px">You have 3 different ways to submit your availability:</div>
-      <div style="margin-bottom:6px;display:flex;gap:8px;align-items:flex-start"><span style="font-weight:600;flex-shrink:0">1.</span><span>Download the PDF and attach it when emailing from your Hone email</span></div>
+      <div style="margin-bottom:6px;display:flex;gap:8px;align-items:flex-start"><span style="font-weight:600;flex-shrink:0">1.</span><span>Download the PDF and attach it when emailing from your Hone email <strong>(best option!)</strong></span></div>
       <div style="margin-bottom:6px;display:flex;gap:8px;align-items:flex-start"><span style="font-weight:600;flex-shrink:0">2.</span><span>Copy/paste the summary text when emailing from your Hone email</span></div>
       <div style="display:flex;gap:8px;align-items:flex-start"><span style="font-weight:600;flex-shrink:0">3.</span><span>Click <em>Send email</em> which will open your email app pre-filled <em style="font-weight:500">(keep in mind the email associated with your email app may not be your Hone email)</em></span></div>
     </div>

@@ -390,14 +390,13 @@ function refresh(){
   html+=`<div class="action-row">
     <div class="action-label">Share your availability</div>
     <div style="width:100%;background:#f0fdf4;border:0.5px solid #bbf7d0;border-radius:6px;padding:12px 14px;font-size:13px;color:#166534;margin-bottom:10px">
-      <div style="font-weight:600;margin-bottom:8px">You have 3 different ways to submit your availability:</div>
+      <div style="font-weight:600;margin-bottom:8px">You have 2 ways to submit your availability:</div>
       <div style="margin-bottom:6px;display:flex;gap:8px;align-items:flex-start"><span style="font-weight:600;flex-shrink:0">1.</span><span>Download the PDF and attach it when emailing from your Hone email <strong>(best option!)</strong></span></div>
       <div style="margin-bottom:6px;display:flex;gap:8px;align-items:flex-start"><span style="font-weight:600;flex-shrink:0">2.</span><span>Copy/paste the summary text when emailing from your Hone email</span></div>
-      <div style="display:flex;gap:8px;align-items:flex-start"><span style="font-weight:600;flex-shrink:0">3.</span><span>Click <em>Send email</em> which will open your email app pre-filled <em style="font-weight:500">(keep in mind the email associated with your email app may not be your Hone email)</em></span></div>
+      
     </div>
     <button class="btn-primary" id="pdf-btn" onclick="downloadPDF()"><i class="ti ti-file-type-pdf" style="font-size:14px"></i> Download PDF</button>
     <button class="btn-primary" onclick="copyEmailText()"><i class="ti ti-copy" style="font-size:14px"></i> Copy text</button>
-    <button class="btn-primary" onclick="sendEmail()"><i class="ti ti-send" style="font-size:14px"></i> Send email</button>
   </div></div>`;
   sec.innerHTML=html;
 }
